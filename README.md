@@ -18,3 +18,9 @@ application up and running locally.  Note there is no new classes but just confi
 ```
 > git checkout feature/min-testcontainers-setup
 ```
+
+To run the app:
+
+```
+> ./mvnw spring-boot:test-run
+```
