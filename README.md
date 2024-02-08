@@ -1,3 +1,7 @@
+Delete below
+To see basic setup with testcontainers or docker-compose checkout the branch: feature/min-testcontainers-setup
+
+
 # Fun with types:  Value Object / Alias types, Nested Types
 
 ---
