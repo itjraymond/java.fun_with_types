@@ -1,5 +1,130 @@
-Delete below
-To see basic setup with testcontainers or docker-compose checkout the branch: feature/min-testcontainers-setup
+# Fun with types: Simple value object
+
+I was working for a retail company were they handle Sku (Stock Keeping Unit) a lot in the code since it is a natural 
+key. They use String as the type for their Sku.  Nothing wrong with that as it was working.  But because it was a 
+String several validation was peppered throughout the code and despite those validation, it still resulted in some 
+bad data.  Since a Sku is essentially a simple value object (in the sense of DDD) i.e. the value is its own identity,
+we could do better than using String as the type of choice.  We could go with Integer for example.  However they had 
+some special sku which started with the letter 'B' hence why they choose String.  Nevertheless, in this installment, 
+we will create a Sku type (value object) and we should demonstrate how to POST/GET such a Sku (serialize and 
+deserialize automatically).  In addition, we will show how to save it to a datastore as VARCHAR.
+
+## Sku Type: a simple value object
+
+To accomplish a simple value object (sometime called Alias Types), we can use class or record.  Since we do not want 
+to modify the value once it is set, we will go with record (later we will use class because we will want the value 
+to be transformed upon creation).
+
+It is always nice to provide a `of` factory method - I find it more readable than using the `new` keyword.
+We also want to override the toString() as it can be convenient when passed to methods such as println(sku), it will 
+call the toString() internally.  Last, we need to define custom serializer and deserializer.  Here is what our Sku 
+looks like:
+
+&nbsp;  
+```java
+public record Sku(@NonNull String value) {
+
+    public Sku {
+        if (value.trim().length() != 8 || value.trim().startsWith("0")) 
+            throw new IllegalArgumentException("Sku must be made of 8 digits and not start with zero");
+        // we can add verification to be only digits
+    }
+
+    // Typical "of" factory method
+    public static Sku of(String value) {
+        return new Sku(value);
+    }
+
+    // Nice to have:  e.g. System.out.println(sku); it will call the Sku.toString();
+    @Override
+    public String toString() {
+        return value;
+    }
+
+    public static class SkuSerializer extends StdSerializer<Sku> {
+
+        public SkuSerializer() {
+            super(Sku.class);
+        }
+
+        @Override
+        public void serialize(Sku sku, JsonGenerator gen, SerializerProvider serializerProvider) throws IOException {
+            gen.writeString(sku.value);
+        }
+    }
+
+    public static class SkuDeserializer extends StdDeserializer<Sku> {
+
+        public SkuDeserializer() {
+            super(Sku.class);
+        }
+
+        @Override
+        public Sku deserialize(JsonParser parser, DeserializationContext deserializationContext) throws IOException, JacksonException {
+            return Sku.of(parser.getText());
+        }
+    }
+}
+```
+
+That is it!  Take a look at the source code to see how it is used within a ProductDefinition.  Also take a look at 
+the unit test which show serialization and deserialization.  The nice thing is that it does not serialize to 
+something like (for ProductDefinition - see code):
+
+
+ProductDefinition serialized - NOT PARTICULARLY GOOD
+```json
+{
+   "id" : "",
+   "sku" : {
+      "value" : "10000000"
+   },
+   "name" : "Product name"
+}
+```
+
+Instead, because of our simple custom serializer, ProductDefinition serialized into:
+
+ProductDefinition serialized - BETTER
+```json
+{
+   "id" : "",
+   "sku" : "10000000",
+   "name" : "Product name"
+}
+```
+
+## Adding the database layer
+
+We are going to save and retrieve the Domain Object: ProductDefinition which for the moment is simply a UUID for the 
+identifier, a Sku and a name.  The objective is how to map the Sku simple value object type to VARCHAR.
+
+Since we are using R2DBC, we will declare the table name and the identity field as follow:
+
+```java
+@Table(name = "product_definition")
+public record ProductDefinition(
+        @Id UUID id,
+        Sku sku,
+        String name
+) {
+
+   public static ProductDefinition of(UUID id, Sku sku, String name) {
+      return new ProductDefinition(id, sku, name);
+   }
+}
+```
+
+Note that because we are not using JPA, we can use record for persistence.  Once we have that, we need to create a 
+Repository.
+
+```java
+@Repository
+public interface ProductDefinitionRepository extends ReactiveCrudRepository<ProductDefinition, UUID> {
+}
+```
+
+# To see basic setup with testcontainers or docker-compose checkout the branch: feature/min-testcontainers-setup
 
 
 # Fun with types:  Value Object / Alias types, Nested Types

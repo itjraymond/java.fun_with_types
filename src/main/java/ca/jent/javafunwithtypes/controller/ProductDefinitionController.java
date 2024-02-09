@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("api/v1")
+@RequestMapping("api/v1/product-definition")
 @RequiredArgsConstructor
 public class ProductDefinitionController {
 

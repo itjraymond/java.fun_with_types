@@ -1,8 +1,15 @@
 package ca.jent.javafunwithtypes.types;
 
 import java.util.UUID;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
 
-public record ProductDefinition(UUID id, Sku sku, String name) {
+@Table(name = "product_definition")
+public record ProductDefinition(
+        @Id UUID id,
+        Sku sku,
+        String name
+) {
 
     public static ProductDefinition of(UUID id, Sku sku, String name) {
         return new ProductDefinition(id, sku, name);
