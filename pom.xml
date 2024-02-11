@@ -94,12 +94,12 @@
 			<artifactId>r2dbc</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-resolver-dns-native-macos</artifactId>
-<!--			<version>4.1.77.Final</version>-->
-			<classifier>osx-aarch_64</classifier>
-		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>io.netty</groupId>-->
+<!--			<artifactId>netty-resolver-dns-native-macos</artifactId>-->
+<!--&lt;!&ndash;			<version>4.1.77.Final</version>&ndash;&gt;-->
+<!--			<classifier>osx-aarch_64</classifier>-->
+<!--		</dependency>-->
 	</dependencies>
 
 	<build>
@@ -123,23 +123,23 @@
 		</plugins>
 	</build>
 
-	<profiles>
-		<profile>
-			<id>tctest</id>
-			<activation>
-				<os>
-					<family>mac</family>
-					<arch>aarch64</arch>
-				</os>
-			</activation>
-			<dependencies>
-				<dependency>
-					<groupId>io.netty</groupId>
-					<artifactId>netty-resolver-dns-native-macos</artifactId>
-					<classifier>osx-aarch_64</classifier>
-				</dependency>
-			</dependencies>
-		</profile>
-	</profiles>
+<!--	<profiles>-->
+<!--		<profile>-->
+<!--			<id>tctest</id>-->
+<!--			<activation>-->
+<!--				<os>-->
+<!--					<family>mac</family>-->
+<!--					<arch>aarch64</arch>-->
+<!--				</os>-->
+<!--			</activation>-->
+<!--			<dependencies>-->
+<!--				<dependency>-->
+<!--					<groupId>io.netty</groupId>-->
+<!--					<artifactId>netty-resolver-dns-native-macos</artifactId>-->
+<!--					<classifier>osx-aarch_64</classifier>-->
+<!--				</dependency>-->
+<!--			</dependencies>-->
+<!--		</profile>-->
+<!--	</profiles>-->
 
 </project>

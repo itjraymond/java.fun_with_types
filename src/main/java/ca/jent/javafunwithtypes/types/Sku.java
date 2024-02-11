@@ -9,6 +9,9 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import lombok.NonNull;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.data.convert.ReadingConverter;
+import org.springframework.data.convert.WritingConverter;
 
 public record Sku(@NonNull String value) {
 
@@ -49,6 +52,24 @@ public record Sku(@NonNull String value) {
         @Override
         public Sku deserialize(JsonParser parser, DeserializationContext deserializationContext) throws IOException, JacksonException {
             return Sku.of(parser.getText());
+        }
+    }
+
+    @ReadingConverter
+    public static class SkuReadConverter implements Converter<String, Sku> {
+
+        @Override
+        public Sku convert(String source) {
+            return Sku.of(source);
+        }
+    }
+
+    @WritingConverter
+    public static class SkuWriteConverter implements Converter<Sku, String> {
+
+        @Override
+        public String convert(Sku sku) {
+            return sku.value;
         }
     }
 }
