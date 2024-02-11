@@ -1,210 +1,3 @@
-# Fun with types: Simple value object
-
-Principle: Make Invalid State Unrepresentable
-
-Example: Sku - Stock Keeping Unit
-
-We could represent a Sku in our Java program with a type String. E.g. String sku = "10000000";
-However, String can have many values that wouldn't be appropriate for a Sku. In addition, we may need to apply some validation peppered throughout the code.
-
-We could represent a Sku with a type Integer. E.g. Integer sku = 10000000;
-This is better but there are still many values that would not be appropriate: e.g. 20, -1, 1356, 02, 1000000.
-
-The reason is that a Sku must have 8 digits and must not start with zero. Hence, a range of [10000000 - 99999999]
-
-I have also seen some exception from a company where they had some sku starting with "B" followed by 8 digits which did
-not start with zero.
-
-Last, when we read code, String or Integer does not convey much meaning when it comes to Sku.
-
-Here we are going to create a Sku type which will increase readability and safety. The caveat, it comes at a cost of some added
-complexity.
-
-In this installment,
-we will create a Sku type (value object) and we should demonstrate how to POST/GET such a Sku (serialize and
-deserialize automatically). In addition, we will show how to save it to a datastore as VARCHAR.
-
-## Sku Type: a simple value object
-
-To accomplish a simple value object (sometime called Alias Types), we can use class or record. Since we do not want
-to modify the value once it is set, we will go with record (later we will use class because we will want the value
-to be transformed upon creation).
-
-It is always nice to provide a `of` factory method - I find it more readable than using the `new` keyword.
-We also want to override the toString() as it can be convenient when passed to methods such as println(sku), it will
-call the toString() internally. Last, we need to define custom serializer and deserializer. Here is what our Sku
-looks like:
-
-&nbsp;
-
-```java
-public record Sku(@NonNull String value) {
-
-    public Sku {
-        if (value.trim().length() != 8 || value.trim().startsWith("0"))
-            throw new IllegalArgumentException("Sku must be made of 8 digits and not start with zero");
-        // we can add verification to be only digits
-    }
-
-    // Typical "of" factory method
-    public static Sku of(String value) {
-        return new Sku(value);
-    }
-
-    // Nice to have:  e.g. System.out.println(sku); it will call the Sku.toString();
-    @Override
-    public String toString() {
-        return value;
-    }
-
-    public static class SkuSerializer extends StdSerializer<Sku> {
-
-        public SkuSerializer() {
-            super(Sku.class);
-        }
-
-        @Override
-        public void serialize(Sku sku, JsonGenerator gen, SerializerProvider serializerProvider) throws IOException {
-            gen.writeString(sku.value);
-        }
-    }
-
-    public static class SkuDeserializer extends StdDeserializer<Sku> {
-
-        public SkuDeserializer() {
-            super(Sku.class);
-        }
-
-        @Override
-        public Sku deserialize(JsonParser parser, DeserializationContext deserializationContext) throws IOException, JacksonException {
-            return Sku.of(parser.getText());
-        }
-    }
-
-    @ReadingConverter
-    public static class SkuReadConverter implements Converter<String, Sku> {
- 
-       @Override
-       public Sku convert(String source) {
-          return Sku.of(source);
-       }
-    }
- 
-    @WritingConverter
-    public static class SkuWriteConverter implements Converter<Sku, String> {
- 
-       @Override
-       public String convert(Sku sku) {
-          return sku.value;
-       }
-    }
-}
-```
-
- Take a look at the source code to see how it is used within a ProductDefinition. Also take a look at
-the unit test which show serialization and deserialization. The nice thing is that it does not serialize to
-something like (for ProductDefinition - see code):
-
-ProductDefinition serialized - NOT PARTICULARLY GOOD
-
-```json
-{
-  "id": "",
-  "sku": {
-    "value": "10000000"
-  },
-  "name": "Product name"
-}
-```
-
-Instead, because of our simple custom serializer, ProductDefinition serialized into:
-
-ProductDefinition serialized - BETTER
-
-```json
-{
-  "id": "",
-  "sku": "10000000",
-  "name": "Product name"
-}
-```
-
-## Adding the database layer
-
-We are going to save and retrieve the Domain Object: ProductDefinition which for the moment is simply a UUID for the
-identifier, a Sku and a name. The objective is how to map the Sku simple value object type to VARCHAR.
-
-Since we are using R2DBC, we will declare the table name and the identity field as follow:
-
-```java
-
-@Table(name = "product_definition")
-public record ProductDefinition(
-        @Id UUID id,
-        Sku sku,
-        String name
-) {
-
-    public static ProductDefinition of(UUID id, Sku sku, String name) {
-        return new ProductDefinition(id, sku, name);
-    }
-
-    @ReadingConverter
-    public static class ProductDefinitionReadConverter implements Converter<Row, ProductDefinition> {
- 
-       @Override
-       public ProductDefinition convert(Row row) {
-          return ProductDefinition.of(
-                  row.get("id", UUID.class),
-                  Sku.of(row.get("sku", String.class)),
-                  row.get("name", String.class)
-          );
-       }
-    }
- 
-    @WritingConverter
-    public static class ProductDefinitionWriteConverter implements Converter<ProductDefinition, OutboundRow> {
- 
-       @Override
-       public OutboundRow convert(ProductDefinition pd) {
-          OutboundRow row = new OutboundRow();
-          if (pd.id != null) {
-             row.put("id", Parameter.from(pd.id));
-          }
-          row.put("sku", Parameter.from(pd.sku.value()));
-          row.put("name", Parameter.from(pd.name));
-          return row;
-       }
-    }
-}
-```
-
-Note that because we are not using JPA, we can use record for persistence. Once we have that, we need to create a
-Repository.
-
-```java
-
-import ca.jent.javafunwithtypes.types.ProductDefinition;
-
-@Repository
-public interface ProductDefinitionRepository extends ReactiveCrudRepository<ProductDefinition, UUID> {
-   Mono<ProductDefinition> findBySku(Sku sku);
-}
-```
-
-Disadvantages:
-
-- Somewhat more complex code.
-- Must define custom serializer, deserializer and reading, writing converters.
-
-Advantage:
-
-- More readable as Sku is encapsulated.
-- Invalid state unrepresentable, but not at compile time.
-- Can have more meaningful data structure such as Map<Sku, ProductDefinition> productBySku =...
-
-
-
 
 # To see basic setup with testcontainers or docker-compose checkout the branch: feature/min-testcontainers-setup
 
@@ -432,4 +225,212 @@ with the ability to login into the database and verify data or modify tables or 
 
 &nbsp;  
 &nbsp;  
+
+# To see Simple Value Object in action, checkout branch `feature/value-object`
+
+# Fun with types: Simple value object
+
+Principle: Make Invalid State Unrepresentable
+
+Example: Sku - Stock Keeping Unit
+
+We could represent a Sku in our Java program with a type String. E.g. String sku = "10000000";
+However, String can have many values that wouldn't be appropriate for a Sku. In addition, we may need to apply some validation peppered throughout the code.
+
+We could represent a Sku with a type Integer. E.g. Integer sku = 10000000;
+This is better but there are still many values that would not be appropriate: e.g. 20, -1, 1356, 02, 1000000.
+
+The reason is that a Sku must have 8 digits and must not start with zero. Hence, a range of [10000000 - 99999999]
+
+I have also seen some exception from a company where they had some sku starting with "B" followed by 8 digits which did
+not start with zero.
+
+Last, when we read code, String or Integer does not convey much meaning when it comes to Sku.
+
+Here we are going to create a Sku type which will increase readability and safety. The caveat, it comes at a cost of some added
+complexity.
+
+In this installment,
+we will create a Sku type (value object) and we should demonstrate how to POST/GET such a Sku (serialize and
+deserialize automatically). In addition, we will show how to save it to a datastore as VARCHAR.
+
+## Sku Type: a simple value object
+
+To accomplish a simple value object (sometime called Alias Types), we can use class or record. Since we do not want
+to modify the value once it is set, we will go with record (later we will use class because we will want the value
+to be transformed upon creation).
+
+It is always nice to provide a `of` factory method - I find it more readable than using the `new` keyword.
+We also want to override the toString() as it can be convenient when passed to methods such as println(sku), it will
+call the toString() internally. Last, we need to define custom serializer and deserializer. Here is what our Sku
+looks like:
+
+&nbsp;
+
+```java
+public record Sku(@NonNull String value) {
+
+    public Sku {
+        if (value.trim().length() != 8 || value.trim().startsWith("0"))
+            throw new IllegalArgumentException("Sku must be made of 8 digits and not start with zero");
+        // we can add verification to be only digits
+    }
+
+    // Typical "of" factory method
+    public static Sku of(String value) {
+        return new Sku(value);
+    }
+
+    // Nice to have:  e.g. System.out.println(sku); it will call the Sku.toString();
+    @Override
+    public String toString() {
+        return value;
+    }
+
+    public static class SkuSerializer extends StdSerializer<Sku> {
+
+        public SkuSerializer() {
+            super(Sku.class);
+        }
+
+        @Override
+        public void serialize(Sku sku, JsonGenerator gen, SerializerProvider serializerProvider) throws IOException {
+            gen.writeString(sku.value);
+        }
+    }
+
+    public static class SkuDeserializer extends StdDeserializer<Sku> {
+
+        public SkuDeserializer() {
+            super(Sku.class);
+        }
+
+        @Override
+        public Sku deserialize(JsonParser parser, DeserializationContext deserializationContext) throws IOException, JacksonException {
+            return Sku.of(parser.getText());
+        }
+    }
+
+    @ReadingConverter
+    public static class SkuReadConverter implements Converter<String, Sku> {
+ 
+       @Override
+       public Sku convert(String source) {
+          return Sku.of(source);
+       }
+    }
+ 
+    @WritingConverter
+    public static class SkuWriteConverter implements Converter<Sku, String> {
+ 
+       @Override
+       public String convert(Sku sku) {
+          return sku.value;
+       }
+    }
+}
+```
+
+Take a look at the source code to see how it is used within a ProductDefinition. Also take a look at
+the unit test which show serialization and deserialization. The nice thing is that it does not serialize to
+something like (for ProductDefinition - see code):
+
+ProductDefinition serialized - NOT PARTICULARLY GOOD
+
+```json
+{
+  "id": "",
+  "sku": {
+    "value": "10000000"
+  },
+  "name": "Product name"
+}
+```
+
+Instead, because of our simple custom serializer, ProductDefinition serialized into:
+
+ProductDefinition serialized - BETTER
+
+```json
+{
+  "id": "",
+  "sku": "10000000",
+  "name": "Product name"
+}
+```
+
+## Adding the database layer
+
+We are going to save and retrieve the Domain Object: ProductDefinition which for the moment is simply a UUID for the
+identifier, a Sku and a name. The objective is how to map the Sku simple value object type to VARCHAR.
+
+Since we are using R2DBC, we will declare the table name and the identity field as follow:
+
+```java
+
+@Table(name = "product_definition")
+public record ProductDefinition(
+        @Id UUID id,
+        Sku sku,
+        String name
+) {
+
+    public static ProductDefinition of(UUID id, Sku sku, String name) {
+        return new ProductDefinition(id, sku, name);
+    }
+
+    @ReadingConverter
+    public static class ProductDefinitionReadConverter implements Converter<Row, ProductDefinition> {
+ 
+       @Override
+       public ProductDefinition convert(Row row) {
+          return ProductDefinition.of(
+                  row.get("id", UUID.class),
+                  Sku.of(row.get("sku", String.class)),
+                  row.get("name", String.class)
+          );
+       }
+    }
+ 
+    @WritingConverter
+    public static class ProductDefinitionWriteConverter implements Converter<ProductDefinition, OutboundRow> {
+ 
+       @Override
+       public OutboundRow convert(ProductDefinition pd) {
+          OutboundRow row = new OutboundRow();
+          if (pd.id != null) {
+             row.put("id", Parameter.from(pd.id));
+          }
+          row.put("sku", Parameter.from(pd.sku.value()));
+          row.put("name", Parameter.from(pd.name));
+          return row;
+       }
+    }
+}
+```
+
+Note that because we are not using JPA, we can use record for persistence. Once we have that, we need to create a
+Repository.
+
+```java
+
+import ca.jent.javafunwithtypes.types.ProductDefinition;
+
+@Repository
+public interface ProductDefinitionRepository extends ReactiveCrudRepository<ProductDefinition, UUID> {
+   Mono<ProductDefinition> findBySku(Sku sku);
+}
+```
+
+Disadvantages:
+
+- Somewhat more complex code.
+- Must define custom serializer, deserializer and reading, writing converters.
+
+Advantage:
+
+- More readable as Sku is encapsulated.
+- Invalid state unrepresentable, but not at compile time.
+- Can have more meaningful data structure such as Map<Sku, ProductDefinition> productBySku =...
+
 
