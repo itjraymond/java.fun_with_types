@@ -5,6 +5,7 @@ import java.util.List;
 import ca.jent.javafunwithtypes.types.ProductDefinition.ProductDefinitionWriteConverter;
 import ca.jent.javafunwithtypes.types.ProductDefinition.ProductDefinitionReadConverter;
 import ca.jent.javafunwithtypes.types.Sku;
+import ca.jent.javafunwithtypes.types.Brand;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.r2dbc.spi.ConnectionFactory;
 import org.springframework.context.annotation.Bean;
@@ -22,7 +23,9 @@ public class ConertersConfiguration {
                 new ProductDefinitionReadConverter(),
                 new ProductDefinitionWriteConverter(),
                 new Sku.SkuReadConverter(),
-                new Sku.SkuWriteConverter()
+                new Sku.SkuWriteConverter(),
+                new Brand.BrandReadConverter(),
+                new Brand.BrandWriteConverter()
         );
         return R2dbcCustomConversions.of(dialect, converters);
     }

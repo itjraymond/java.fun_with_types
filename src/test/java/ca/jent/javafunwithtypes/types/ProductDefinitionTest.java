@@ -25,11 +25,13 @@ class ProductDefinitionTest {
         String expected =  "{\n" +
                   "  \"id\" : \"5b106fd1-c059-42d1-aab8-96a1202d92df\",\n" +
                   "  \"sku\" : \"10000000\",\n" +
+                  "  \"brand\" : \"Sony\",\n" +
                   "  \"name\" : \"product name\"\n" +
                   "}";
         ProductDefinition pd = ProductDefinition.of(
                 UUID.fromString("5b106fd1-c059-42d1-aab8-96a1202d92df"),
                 Sku.of("10000000"),
+                Brand.of("sony"),
                 "product name"
         );
 
@@ -43,12 +45,14 @@ class ProductDefinitionTest {
         String jsonPd = "{\n" +
                         "  \"id\" : \"5b106fd1-c059-42d1-aab8-96a1202d92df\",\n" +
                         "  \"sku\" : \"10000000\",\n" +
+                        "  \"brand\" : \"sony\",\n" +
                         "  \"name\" : \"product name\"\n" +
                         "}";
 
         ProductDefinition expectedPd = ProductDefinition.of(
                 UUID.fromString("5b106fd1-c059-42d1-aab8-96a1202d92df"),
                 Sku.of("10000000"),
+                Brand.of("sony"),
                 "product name"
         );
 

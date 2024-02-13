@@ -1,14 +1,7 @@
 package ca.jent.javafunwithtypes.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.time.Duration;
 import ca.jent.javafunwithtypes.repository.ProductDefinitionRepository;
+import ca.jent.javafunwithtypes.types.Brand;
 import ca.jent.javafunwithtypes.types.ProductDefinition;
 import ca.jent.javafunwithtypes.types.Sku;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.reactive.server.FluxExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.util.ResourceUtils;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -27,10 +19,17 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @Testcontainers
 @AutoConfigureWebTestClient
-@ActiveProfiles("tctest") // see pom.xml with profile tctest (for M1)
+@ActiveProfiles("tc") // see pom.xml with profile tctest (for M1)
 class ProductDefinitionControllerTest {
 
     @Autowired
@@ -65,8 +64,10 @@ class ProductDefinitionControllerTest {
         StepVerifier.create(responseBody)
                 .expectSubscription()
                 .expectNextMatches(pd ->
-                        pd.name().equals("Product name") && pd.sku().value().equals("10000000"))
-                .verifyComplete();
+                        pd.name().equals("Product name") &&
+                        pd.sku().value().equals("10000000") &&
+                        pd.brand().getValue().equals("SONY")
+                ).verifyComplete();
 
         StepVerifier.create(productDefinitionRepository.count()).expectSubscription().expectNextMatches(c -> c == 1).verifyComplete();
 
@@ -82,6 +83,7 @@ class ProductDefinitionControllerTest {
                 .consumeWith(respPayload -> {
                     assertNotNull(respPayload.getResponseBody().id());
                     assertEquals(Sku.of("10000000"), respPayload.getResponseBody().sku());
+                    assertEquals(Brand.of("sony").getValue(), respPayload.getResponseBody().brand().toString());
                     assertEquals("Product name", respPayload.getResponseBody().name());
                 });
     }
@@ -124,6 +126,7 @@ class ProductDefinitionControllerTest {
                 .consumeWith(p -> {
                     assertNotNull(p.getResponseBody().id());
                     assertEquals("10000001", p.getResponseBody().sku().value());
+                    assertEquals("SONY", p.getResponseBody().brand().getValue());
                     assertEquals("PS5", p.getResponseBody().name());
                 });
 
@@ -176,6 +179,7 @@ class ProductDefinitionControllerTest {
                     assertNotNull(respPayload.getResponseBody().id());
                     assertEquals(Sku.of("10000000"), respPayload.getResponseBody().sku());
                     assertEquals("Product name", respPayload.getResponseBody().name());
+                    assertEquals("SONY", respPayload.getResponseBody().brand().getValue());
                 });
 
         webTestClient.get()
@@ -193,12 +197,8 @@ class ProductDefinitionControllerTest {
                 .uri("/api/v1/product-definition/sku/10000003")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(ProductDefinition.class)
-                .consumeWith(respPayload -> {
-                    assertNotNull(respPayload.getResponseBody().id());
-                    assertEquals(Sku.of("10000003"), respPayload.getResponseBody().sku());
-                    assertEquals("TV", respPayload.getResponseBody().name());
-                });
+                .expectBody()
+                .jsonPath("$.brand").isEqualTo("Sony");  // Not SONY or sony but only Sony
     }
 
 

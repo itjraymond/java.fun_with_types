@@ -1,4 +1,3 @@
-
 # To see basic setup with testcontainers or docker-compose checkout the branch: feature/min-testcontainers-setup
 
 # Fun with types:  Value Object / Alias types, Nested Types
@@ -6,16 +5,14 @@
 ---
 
 The objective is to re-enforce usage of more constraining types in Java so that we can leverage help from the
-compiler. More often than not, the reason of having bad data in the data store is often caused by not being able
-restricting values for a certain abstraction. We also want to make sure we serialize/deserialize and convert from
-and to the database properly.
+compiler. This is also a principle named as "Having Invalid State Unrepresentable" More often than not, the reason of
+having bad data in the data store is often caused by not being able restricting values for a certain abstraction. We
+also want to make sure we serialize/deserialize and convert from and to the database properly.
 
-In addition, we want to experiment with nested type serialization and deserialization but mostly how to handle the
-nested type with the database using R2DBC driver. Last we also want to experiment with the R2DBC driver on how to
-handle one-to-many relationship (for instance the spring data jdbc does handle those relationship nicely but not R2DBC).
+We will start, in this installement, with the representation of simple Value Object.
 
-However, before we dive into representing simple Java Value Object and nested types, we need to have a working base
-line with the database using testcontainers and docker-compose.
+However, before we do, lets establish a working base line for our inner loop development using testcontainers and
+docker-compose.
 
 ## 1. Minimal setup to get the application started locally with testcontainers or docker-compose
 
@@ -26,13 +23,16 @@ line with the database using testcontainers and docker-compose.
 1. Docker Desktop or Rancher installed locally.
 
 
-2. In some situation (e.g. in a company; have software install policies), you may not be able to install either Docker
-   Desktop nor Rancher. In such case, you can install `colima` with docker-engine and docker-compose (those are
-   free and does not require Admin Privs on the Mac).
+2. In some situation, for instance, at your company you may have software installation policies prohibiting you to
+   install Docker or Rancher. In such case, you can install `colima` with docker-engine and docker-compose as
+   alternatives (those are free and does not require Admin Privs on the Mac).
 
 
 3. Also, if you are using Mac M1/M2/M3 with colima, you may need to start colima with arm architecture. See aside
-   below.
+   below. But a note of caution:  I did experience issues using colima on a M1. Same code base works in a Mac Intel
+   based processor but had weird behavior with testcontainers for test (running a single test on a M1 could endup with
+   few success and few failure; even after running the same test repeatably - I still haven't found the issue hence the
+   caution)
 
 &nbsp;
 
@@ -58,7 +58,7 @@ Make sure your Docker Desktop or Rancher or `colima` are running.
 &nbsp;  
 Checkout the `feature/min-testcontainers-setup` to see the minimum configuration you must provide to get the
 application up and running locally with testcontainers or docker-compose. Note there are no new classes but just
-configurations; mostly about postgres.
+configurations; mostly about postgres, testcontainers and docker-compose.
 
 ```shell
 > git checkout feature/min-testcontainers-setup
@@ -72,44 +72,50 @@ configurations; mostly about postgres.
 ---
 
 With this method, the developer can start an application very quickly with no worries about creating a
-docker-compose. With `spring-boot-3.2` and with `Testcontainers` dependency, it automatically create inside
+docker-compose. With `spring-boot-3.2` and with `Testcontainers` dependency, it automatically creates inside
 `src/test/java/«your-package»/TestJava«XYZ»Application.java` an application that can be used for local development
-and will start a Testcontainer with postgres (in this setup) and keep the data between startup.
+and will start a Testcontainer with postgres (in this setup) and keep the data between startup (with @RestartScope
+annotation).
 
 &nbsp;  
 Here is a checklist you must do in order to get this setup.
 &nbsp;
 
-1. Add in `src/main/resources` a file `application-unittest.properties` and we will use an active profile `unittest`
-   for unit tests but also to start the application locally for the developer to manually test code quickly. This
-   `application-unittest.properties` must contain the following:
+1. Add in `src/main/resources` a file `application-unittest.properties` and we will use an active profile `local`
+   to start the application locally for the developer to manually test code quickly.
+   This `application-local.properties` must contain the following:
 
    &nbsp;
 
     ```yaml
+    spring.r2dbc.url=r2dbc:postgresql://localhost:5432/products
+    spring.r2dbc.username=postgres
+    spring.r2dbc.password=postgres
+    
+    spring.data.r2dbc.repositories.enabled=true
     spring.sql.init.mode=always
     spring.sql.init.schema-locations=classpath:/postgres/schema.sql
     ```
 
    &nbsp;     
    The `spring.sql.init.mode=always` will always execute the `schema.sql` script. So you need to write that script
-   according to your needs. By default, it search the `schema.sql` script within `src/main/resources/` but you can
-   put it within a another folder such as `src/main/resources/postgres/shcema.sql` and add that location within the
-   `application-unittest.properties` under `spring.sql.init.schema-locations`.
+   according to your needs. By default, it searches the `schema.sql` script within `src/main/resources/` but you can
+   put it within another folder such as `src/main/resources/postgres/shcema.sql` and add that location within the
+   `application-local.properties` under `spring.sql.init.schema-locations`.
 
    &nbsp;
 2. Add a `schema.sql` script to `src/main/resources/postgres/` and write your own database objects.
 
    &nbsp;
-3. Add the profile `unittest` by editing (in the present case) the `TestJavaFunWithTypesApplication.java`
-   configuration (IntelliJ Idea); Right click on that file, and select `Modify Run Configuration...` and add the
+3. Add the profile `local` by editing (in the present case) the `TestJavaFunWithTypesApplication.java`
+   configuration (IntelliJ Idea); Right-click on that file, and select `Modify Run Configuration...` and add the
    profile. You can also export the profile from a terminal: `> export SPRING_PROFILES_ACTIVE=unittest`.
 
 &nbsp;  
-To run the app with testcontainers from the terminal with profile `unittest`:
+To run the app with testcontainers from the terminal with profile `local`:
 
    ```shell
-      > ./mvnw spring-boot:test-run  -Dspring-boot.run.profiles=unittest
+      > ./mvnw spring-boot:test-run  -Dspring-boot.run.profiles=local
    ```
 
 &nbsp;  
@@ -122,7 +128,7 @@ You can check if postgres is running within docker engine:
 ```
 
 &nbsp;  
-You can also login into Postgres within your running container named `db-products`.
+You can also _login_ into Postgres within your running container named `db-products`.
 
 ```shell
    > docker exec -it db-products psql -U postgres
@@ -130,10 +136,10 @@ You can also login into Postgres within your running container named `db-product
 ```
 
 &nbsp;  
-From psql prompt, you can show the databases `\l` and you can switch to the `products` database: `\c products`.
+From psql prompt, you can show the databases with `\l` and you can switch to the `products` database: `\c products`.
 
 Now you can develop your application with a database of your choice - this is a good setup for `inner development
-loop`, a term coined by Thomas Vitale.
+loop`, I believe a term coined by Thomas Vitale.
 
 &nbsp;
 
@@ -143,12 +149,14 @@ loop`, a term coined by Thomas Vitale.
 
 
 To run the application, we must be able to connect to a database. We can use docker-compose to start the database
-within a OCI container. We already have included "Docker Compose Support" dependencies in our initial spring boot
-application (from start.springboot.io). By doing so, it automatically created a docker-compose.yml (or compose.yaml)
-at the root of the project. I did rename it to `docker-compose.yml` in this project.
+within an OCI container (Docker, Rancher, Colima). We already have included "Docker Compose Support" dependencies in our
+initial spring boot application (from start.springboot.io). By doing so, it automatically created a docker-compose.yml (
+or compose.yaml) at the root of the project. I did rename it to `docker-compose.yml` in this project. Spring boot will
+be able to pick a few name variation such as compose.yaml, docker-compose.yml, etc.
 
 &nbsp;  
-We will need to modify two files: `docker-compose.yml` and `application-local.yml` and define a new profile `local`.
+We will need to modify two files: `docker-compose.yml` and `application-local.yml` and re-use our existing
+profile `local`.
 
 1. docker-compose.yml
 
@@ -224,18 +232,21 @@ From this setup, you can have your `inner development loop` having your database
 with the ability to login into the database and verify data or modify tables or other database objects.
 
 &nbsp;  
-&nbsp;  
+&nbsp;
 
 # To see Simple Value Object in action, checkout branch `feature/value-object`
 
-# Fun with types: Simple value object
+# Fun with types: Simple value object: Sku
+
+---
 
 Principle: Make Invalid State Unrepresentable
 
 Example: Sku - Stock Keeping Unit
 
-We could represent a Sku in our Java program with a type String. E.g. String sku = "10000000";
-However, String can have many values that wouldn't be appropriate for a Sku. In addition, we may need to apply some validation peppered throughout the code.
+We could represent a Sku in our Java program using the type String. E.g. String sku = "10000000";
+However, String can have many values that wouldn't be appropriate for a Sku. In addition, we may need to apply some
+validation peppered throughout the code.
 
 We could represent a Sku with a type Integer. E.g. Integer sku = 10000000;
 This is better but there are still many values that would not be appropriate: e.g. 20, -1, 1356, 02, 1000000.
@@ -247,23 +258,23 @@ not start with zero.
 
 Last, when we read code, String or Integer does not convey much meaning when it comes to Sku.
 
-Here we are going to create a Sku type which will increase readability and safety. The caveat, it comes at a cost of some added
-complexity.
+Here we are going to create a Sku type which will increase readability and safety. The caveat, it comes at a cost of
+some added complexity - but shouldn't add complexity to the overall Domain Design.
 
-In this installment,
-we will create a Sku type (value object) and we should demonstrate how to POST/GET such a Sku (serialize and
-deserialize automatically). In addition, we will show how to save it to a datastore as VARCHAR.
+In this installment, we will create a Sku type (value object) and we should demonstrate how to POST/GET such a Sku (
+serialize and deserialize automatically). In addition, we will show how to save it to a datastore as VARCHAR. We will be
+using postgres
 
 ## Sku Type: a simple value object
 
-To accomplish a simple value object (sometime called Alias Types), we can use class or record. Since we do not want
-to modify the value once it is set, we will go with record (later we will use class because we will want the value
-to be transformed upon creation).
+To accomplish a simple value object (sometime called Alias Types such as in Kotlin), we can use class or record. Since
+we do not want to modify the value once it is set, we will go with record (later we will use class because we will want
+the value to be transformed upon creation).
 
 It is always nice to provide a `of` factory method - I find it more readable than using the `new` keyword.
-We also want to override the toString() as it can be convenient when passed to methods such as println(sku), it will
-call the toString() internally. Last, we need to define custom serializer and deserializer. Here is what our Sku
-looks like:
+We also want to override the toString() as it can be convenient when passed to methods such as `println(sku)` which call
+the `.toString()` internally. Last, we need to define custom serializer and deserializer. Here is what our Sku looks
+like:
 
 &nbsp;
 
@@ -273,7 +284,7 @@ public record Sku(@NonNull String value) {
     public Sku {
         if (value.trim().length() != 8 || value.trim().startsWith("0"))
             throw new IllegalArgumentException("Sku must be made of 8 digits and not start with zero");
-        // we can add verification to be only digits
+        // we can add validation to be only digits if needed.
     }
 
     // Typical "of" factory method
@@ -313,29 +324,32 @@ public record Sku(@NonNull String value) {
 
     @ReadingConverter
     public static class SkuReadConverter implements Converter<String, Sku> {
- 
-       @Override
-       public Sku convert(String source) {
-          return Sku.of(source);
-       }
+
+        @Override
+        public Sku convert(String source) {
+            return Sku.of(source);
+        }
     }
- 
+
     @WritingConverter
     public static class SkuWriteConverter implements Converter<Sku, String> {
- 
-       @Override
-       public String convert(Sku sku) {
-          return sku.value;
-       }
+
+        @Override
+        public String convert(Sku sku) {
+            return sku.value;
+        }
     }
 }
 ```
+
+The Serializer and Deserializer are obviously for http Request/Response json payload. The converters are for the
+database conversions.
 
 Take a look at the source code to see how it is used within a ProductDefinition. Also take a look at
 the unit test which show serialization and deserialization. The nice thing is that it does not serialize to
 something like (for ProductDefinition - see code):
 
-ProductDefinition serialized - NOT PARTICULARLY GOOD
+ProductDefinition serialized - *NOT PARTICULARLY GOOD*
 
 ```json
 {
@@ -349,7 +363,7 @@ ProductDefinition serialized - NOT PARTICULARLY GOOD
 
 Instead, because of our simple custom serializer, ProductDefinition serialized into:
 
-ProductDefinition serialized - BETTER
+ProductDefinition serialized - *BETTER AND SIMPLER*
 
 ```json
 {
@@ -361,10 +375,10 @@ ProductDefinition serialized - BETTER
 
 ## Adding the database layer
 
-We are going to save and retrieve the Domain Object: ProductDefinition which for the moment is simply a UUID for the
-identifier, a Sku and a name. The objective is how to map the Sku simple value object type to VARCHAR.
+We are going to save and retrieve the Domain Object: ProductDefinition which for the moment is made of a UUID for the
+identifier, a Sku and a name. The objective is to demonstrate how to map the Sku simple value object type to VARCHAR.
 
-Since we are using R2DBC, we will declare the table name and the identity field as follow:
+Since we are using R2DBC, we will declare the table name and the identity field as follows:
 
 ```java
 
@@ -381,36 +395,36 @@ public record ProductDefinition(
 
     @ReadingConverter
     public static class ProductDefinitionReadConverter implements Converter<Row, ProductDefinition> {
- 
-       @Override
-       public ProductDefinition convert(Row row) {
-          return ProductDefinition.of(
-                  row.get("id", UUID.class),
-                  Sku.of(row.get("sku", String.class)),
-                  row.get("name", String.class)
-          );
-       }
+
+        @Override
+        public ProductDefinition convert(Row row) {
+            return ProductDefinition.of(
+                    row.get("id", UUID.class),
+                    Sku.of(row.get("sku", String.class)),
+                    row.get("name", String.class)
+            );
+        }
     }
- 
+
     @WritingConverter
     public static class ProductDefinitionWriteConverter implements Converter<ProductDefinition, OutboundRow> {
- 
-       @Override
-       public OutboundRow convert(ProductDefinition pd) {
-          OutboundRow row = new OutboundRow();
-          if (pd.id != null) {
-             row.put("id", Parameter.from(pd.id));
-          }
-          row.put("sku", Parameter.from(pd.sku.value()));
-          row.put("name", Parameter.from(pd.name));
-          return row;
-       }
+
+        @Override
+        public OutboundRow convert(ProductDefinition pd) {
+            OutboundRow row = new OutboundRow();
+            if (pd.id != null) {
+                row.put("id", Parameter.from(pd.id));
+            }
+            row.put("sku", Parameter.from(pd.sku.value()));
+            row.put("name", Parameter.from(pd.name));
+            return row;
+        }
     }
 }
 ```
 
-Note that because we are not using JPA, we can use record for persistence. Once we have that, we need to create a
-Repository.
+Note that because we are not using JPA, we can use record for persistence. We also created Converters for this entity.
+Once we have that, we need to create a Repository.
 
 ```java
 
@@ -418,9 +432,12 @@ import ca.jent.javafunwithtypes.types.ProductDefinition;
 
 @Repository
 public interface ProductDefinitionRepository extends ReactiveCrudRepository<ProductDefinition, UUID> {
-   Mono<ProductDefinition> findBySku(Sku sku);
+    Mono<ProductDefinition> findBySku(Sku sku);
 }
 ```
+
+Notice that we can use the Type Sku in a query (`findBySku(Sku sku)`) because we have created Converters for Sku (see
+Sku.java).
 
 Disadvantages:
 
@@ -429,8 +446,131 @@ Disadvantages:
 
 Advantage:
 
-- More readable as Sku is encapsulated.
+- More readable as Sku encapsulate conversions.
 - Invalid state unrepresentable, but not at compile time.
 - Can have more meaningful data structure such as Map<Sku, ProductDefinition> productBySku =...
+
+      ASIDE
+      -----
+
+      Note that in my case here, I do assume that the actual value for the Sku will be coming from either upstream 
+      service (via exposed api) or downstream service (such as a database or a queue).  This means that we can fail fast
+      when it comes to Sku validation - and we should.  Anytime we are given an invalid value for a Sku we should 
+      immediatly reject it and not do any further computation.
+
+&nbsp;  
+&nbsp;
+
+# To see a more complex Value Object in action, checkout branch `feature/valueObjectBrand`
+
+# Fun with types: a more complex value object: Brand
+
+---
+
+A Brand such as Toyota, Samsung, Apple are common but the number of Brand today is enormous. Moreover, a Brand is "
+value" oriented. A Brand rarely change. This could be a good candidate for enum but unfortunately the number of Brand
+cannot really be declared in advance and if we need to add one, we must make code change and re-deploy.
+
+I have seen in a database, entries for Brand such as `Apple`, `apple` or `APPLE`. If you have that, it makes database
+queries less efficient and more cumbersome. We notice that any of these variants can be viewed as a SYMBOL: they all
+mean the same thing. We usually let staff enter a Brand hence prone to consistency error. A staff may
+enter `Apple`, `apple` or `APPLE`. What is needed is a type that will keep consistency for the system and allow new
+value to be added. We will use the Brand type to demonstrate this.
+
+For the case of Brand, we will use a class instead of record because we want to add a "transformation" of the value so
+that we can keep as a SYMBOL. We will always use Brand, in the system, as all uppercase, including in the database.
+
+When the Brand is display for a user (or part of a response body), we can "transform" it again to be "Capitalized"
+instead of all uppercase. The principle is that the code will always see a Brand as uppercase.
+
+```java
+public final class Brand {
+    // value will hold the actual value for Brand
+    private final String value;
+
+    // private constructor as we want to control the creation of Brand
+    private Brand() {
+        this.value = null;
+    }
+
+    private Brand(String value) {
+        // A new Brand will always be uppercase
+        this.value = value.trim().toUpperCase();
+    }
+
+    // the only way to create a Brand
+    public static Brand of(String brand) {
+        return new Brand(brand);
+    }
+
+    // Nice to have: toString()
+    @Override
+    public String toString() {
+        return value;
+    }
+
+    // No setter: immutable
+    public String getValue() {
+        return value;
+    }
+
+    // We control the serialization and deserialization
+    // example:
+    // {                         AND NOT   {
+    //   "sku" : "10000000",                  "sku" : "10000000",
+    //   "brand" : "Apple"                    "brand" : {
+    // }                                            "value" : "Apple"
+    //                                         }
+    //                                      }
+    public static class BrandSerializer extends StdSerializer<Brand> {
+
+        public BrandSerializer() {
+            super(Brand.class);
+        }
+
+        @Override
+        public void serialize(Brand brand, JsonGenerator gen, SerializerProvider serializerProvider) throws IOException {
+            gen.writeString(brand.getValue());
+        }
+    }
+
+    public static class BrandDeserializer extends StdDeserializer<Brand> {
+
+        public BrandDeserializer() {
+            super(Brand.class);
+        }
+
+        @Override
+        public Brand deserialize(JsonParser parser, DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
+            return Brand.of(parser.getText());
+        }
+    }
+
+    // We use Converter (for the database) such that when our Repository will have: findByBrand(Brand brand)
+    @ReadingConverter
+    public static class BrandReadConverter implements Converter<String, Brand> {
+
+        @Override
+        public Brand convert(String value) {
+            return Brand.of(value);
+        }
+    }
+
+    @WritingConverter
+    public static class BrandWriteConverter implements Converter<Brand, String> {
+
+        @Override
+        public String convert(Brand brand) {
+            return brand.value;
+        }
+    }
+}
+
+```
+
+See `ProductDefinitionControllerTest.java` to see E2E test.
+
+We can see that Brand is similar to Sku but we needed to use a class instead of record so that we could control the
+transformation of the encapsulated value.
 
 

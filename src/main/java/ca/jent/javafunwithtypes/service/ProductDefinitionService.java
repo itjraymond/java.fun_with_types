@@ -2,10 +2,12 @@ package ca.jent.javafunwithtypes.service;
 
 import java.util.UUID;
 import ca.jent.javafunwithtypes.repository.ProductDefinitionRepository;
+import ca.jent.javafunwithtypes.types.Brand;
 import ca.jent.javafunwithtypes.types.ProductDefinition;
 import ca.jent.javafunwithtypes.types.Sku;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -24,6 +26,10 @@ public class ProductDefinitionService {
 
     public Mono<ProductDefinition> findBySku(Sku sku) {
         return repository.findBySku(sku);
+    }
+
+    public Flux<ProductDefinition> findByBrand(Brand brand) {
+        return repository.findByBrand(brand);
     }
 
 }

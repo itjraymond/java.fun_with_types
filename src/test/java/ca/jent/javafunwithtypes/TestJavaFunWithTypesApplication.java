@@ -18,6 +18,16 @@ public class TestJavaFunWithTypesApplication {
 		return new PostgreSQLContainer<>(DockerImageName.parse("postgres:16.1-alpine"));
 	}
 
+	/**
+	 * Use with `local` profile
+	 * application-local.properties must define at least:
+	 *   spring.r2dbc.url
+	 *   spring.r2dbc.username
+	 *   spring.r2dbc.password
+	 *   spring.data.r2dbc.repositories.enabled=true
+	 *   spring.sql.init.mode=always
+	 *   spring.sql.init.schema-locations
+	 */
 	public static void main(String[] args) {
 		SpringApplication
 				.from(JavaFunWithTypesApplication::main)
