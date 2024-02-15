@@ -14,11 +14,12 @@ import org.springframework.r2dbc.core.Parameter;
 public record ProductDefinition(
         @Id UUID id,
         Sku sku,
+        Brand brand,
         String name
 ) {
 
-    public static ProductDefinition of(UUID id, Sku sku, String name) {
-        return new ProductDefinition(id, sku, name);
+    public static ProductDefinition of(UUID id, Sku sku, Brand brand, String name) {
+        return new ProductDefinition(id, sku, brand, name);
     }
 
     @ReadingConverter
@@ -29,6 +30,7 @@ public record ProductDefinition(
             return ProductDefinition.of(
                     row.get("id", UUID.class),
                     Sku.of(row.get("sku", String.class)),
+                    Brand.of(row.get("brand", String.class)),
                     row.get("name", String.class)
             );
         }
@@ -44,6 +46,7 @@ public record ProductDefinition(
                 row.put("id", Parameter.from(pd.id));
             }
             row.put("sku", Parameter.from(pd.sku.value()));
+            row.put("brand", Parameter.from(pd.brand.getValue()));
             row.put("name", Parameter.from(pd.name));
             return row;
         }
