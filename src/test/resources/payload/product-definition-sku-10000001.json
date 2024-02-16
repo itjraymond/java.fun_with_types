@@ -2,5 +2,6 @@
   "id" : null,
   "sku" : "10000001",
   "brand" : "Sony",
-  "name" : "PS5"
+  "name" : "PS5",
+  "category" : "ELECTRONICS"
 }

@@ -2,5 +2,6 @@
   "id" : null,
   "sku" : "10000003",
   "brand" : "SOnY",
-  "name" : "TV"
+  "name" : "TV",
+  "category" : "TVS"
 }
