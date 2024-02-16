@@ -236,7 +236,7 @@ with the ability to login into the database and verify data or modify tables or 
 
 # To see Simple Value Object in action, checkout branch `feature/value-object`
 
-# Fun with types: Simple value object: Sku
+# 2. Fun with types: Simple value object: Sku
 
 ---
 
@@ -265,7 +265,7 @@ In this installment, we will create a Sku type (value object) and we should demo
 serialize and deserialize automatically). In addition, we will show how to save it to a datastore as VARCHAR. We will be
 using postgres
 
-## Sku Type: a simple value object
+## 2.1 Sku Type: a simple value object
 
 To accomplish a simple value object (sometime called Alias Types such as in Kotlin), we can use class or record. Since
 we do not want to modify the value once it is set, we will go with record (later we will use class because we will want
@@ -373,7 +373,7 @@ ProductDefinition serialized - *BETTER AND SIMPLER*
 }
 ```
 
-## Adding the database layer
+## 2.2 Adding the database layer
 
 We are going to save and retrieve the Domain Object: ProductDefinition which for the moment is made of a UUID for the
 identifier, a Sku and a name. The objective is to demonstrate how to map the Sku simple value object type to VARCHAR.
@@ -463,7 +463,7 @@ Advantage:
 
 # To see a more complex Value Object in action, checkout branch `feature/valueObjectBrand`
 
-# Fun with types: a more complex value object: Brand
+# 3. Fun with types: a more complex value object: Brand
 
 ---
 
@@ -570,7 +570,20 @@ public final class Brand {
 
 See `ProductDefinitionControllerTest.java` to see E2E test.
 
-We can see that Brand is similar to Sku but we needed to use a class instead of record so that we could control the
+We can see that Brand is similar to Sku, but we needed to use a class instead of record so that we could control the
 transformation of the encapsulated value.
 
+# Checkout the branch `feature/enums`
+
+# 4. Fun with types: SYMBOLS
+
+An enum is a collection of fixed SYMBOLS that help human to give meaning (sequence of chars forming the symbol) and the
+compiler which will only accept for the given type (enum) one of the symbol in the collection. We need to remember that
+all values within an enums are singleton and thus only one instance ever exist. We usually use enums when we control the
+possible values i.e. no values comes from the outside world and is controlled by the business. This is in contrast to
+Brand that we previously worked on, where the values always depended on the outside world.
+
+The serialization and deserialization is taken care by Jackson library and so we have nothing to implement for handling
+enums. However, for R2DBC, we need to expand our existing converter for the ProductDefinition. Since this is very
+simple, see the source code to see the changes.
 

@@ -15,11 +15,12 @@ public record ProductDefinition(
         @Id UUID id,
         Sku sku,
         Brand brand,
-        String name
+        String name,
+        Category category
 ) {
 
-    public static ProductDefinition of(UUID id, Sku sku, Brand brand, String name) {
-        return new ProductDefinition(id, sku, brand, name);
+    public static ProductDefinition of(UUID id, Sku sku, Brand brand, String name, Category category) {
+        return new ProductDefinition(id, sku, brand, name, category);
     }
 
     @ReadingConverter
@@ -31,7 +32,8 @@ public record ProductDefinition(
                     row.get("id", UUID.class),
                     Sku.of(row.get("sku", String.class)),
                     Brand.of(row.get("brand", String.class)),
-                    row.get("name", String.class)
+                    row.get("name", String.class),
+                    Category.valueOf(row.get("category", String.class))
             );
         }
     }
@@ -48,6 +50,7 @@ public record ProductDefinition(
             row.put("sku", Parameter.from(pd.sku.value()));
             row.put("brand", Parameter.from(pd.brand.getValue()));
             row.put("name", Parameter.from(pd.name));
+            row.put("category", Parameter.from(pd.category().name()));
             return row;
         }
     }
