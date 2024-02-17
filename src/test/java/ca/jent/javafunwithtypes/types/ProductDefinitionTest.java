@@ -23,18 +23,23 @@ class ProductDefinitionTest {
     @Test
     void test_serialization() throws IOException {
         String expected =  "{\n" +
-                  "  \"id\" : \"5b106fd1-c059-42d1-aab8-96a1202d92df\",\n" +
-                  "  \"sku\" : \"10000000\",\n" +
-                  "  \"brand\" : \"Sony\",\n" +
-                  "  \"name\" : \"product name\",\n" +
-                  "  \"category\" : \"TVS\"\n" +
-                  "}";
+                "  \"id\" : \"5b106fd1-c059-42d1-aab8-96a1202d92df\",\n" +
+                "  \"sku\" : \"10000000\",\n" +
+                "  \"brand\" : \"Sony\",\n" +
+                "  \"name\" : \"product name\",\n" +
+                "  \"category\" : \"TVS\",\n" +
+                "  \"weight\" : {\n" +
+                "    \"value\" : 1.0,\n" +
+                "    \"unit\" : \"GRAM\"\n" +
+                "  }\n" +
+                "}";
         ProductDefinition pd = ProductDefinition.of(
                 UUID.fromString("5b106fd1-c059-42d1-aab8-96a1202d92df"),
                 Sku.of("10000000"),
                 Brand.of("sony"),
                 "product name",
-                Category.TVS
+                Category.TVS,
+                Weight.of(1.0F, UnitOfWeight.GRAM)
         );
 
         JsonContent<ProductDefinition> jsonPd = jacksonTester.write(pd);
@@ -45,19 +50,24 @@ class ProductDefinitionTest {
     @Test
     void test_deserialization() throws IOException {
         String jsonPd = "{\n" +
-                        "  \"id\" : \"5b106fd1-c059-42d1-aab8-96a1202d92df\",\n" +
-                        "  \"sku\" : \"10000000\",\n" +
-                        "  \"brand\" : \"sony\",\n" +
-                        "  \"name\" : \"product name\",\n" +
-                        "  \"category\" : \"TVS\"\n" +
-                        "}";
+                "  \"id\" : \"5b106fd1-c059-42d1-aab8-96a1202d92df\",\n" +
+                "  \"sku\" : \"10000000\",\n" +
+                "  \"brand\" : \"Sony\",\n" +
+                "  \"name\" : \"product name\",\n" +
+                "  \"category\" : \"TVS\",\n" +
+                "  \"weight\" : {\n" +
+                "    \"value\" : 1.0,\n" +
+                "    \"unit\" : \"GRAM\"\n" +
+                "  }\n" +
+                "}";
 
         ProductDefinition expectedPd = ProductDefinition.of(
                 UUID.fromString("5b106fd1-c059-42d1-aab8-96a1202d92df"),
                 Sku.of("10000000"),
                 Brand.of("sony"),
                 "product name",
-                Category.TVS
+                Category.TVS,
+                Weight.of(1.0F, UnitOfWeight.GRAM)
         );
 
         ObjectContent<ProductDefinition> pd = jacksonTester.parse(jsonPd);
@@ -66,5 +76,6 @@ class ProductDefinitionTest {
         assertEquals(expectedPd.sku(), pd.getObject().sku());
         assertEquals(expectedPd.name(), pd.getObject().name());
         assertEquals(expectedPd.category(), pd.getObject().category());
+        assertEquals(expectedPd.weight().getStandarizedWeight(), pd.getObject().weight().getStandarizedWeight());
     }
 }

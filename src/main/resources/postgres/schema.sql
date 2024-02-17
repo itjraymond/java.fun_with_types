@@ -6,5 +6,7 @@ CREATE TABLE IF NOT EXISTS product_definition (
   sku VARCHAR(8) UNIQUE NOT NULL,
   brand VARCHAR(50),
   name VARCHAR(60),
-  category VARCHAR(60)
+  category VARCHAR(60),
+  weight_in_gram FLOAT,
+  original_unit_of_weight VARCHAR(10)
 );
