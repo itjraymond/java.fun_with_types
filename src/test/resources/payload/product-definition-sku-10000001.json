@@ -3,5 +3,9 @@
   "sku" : "10000001",
   "brand" : "Sony",
   "name" : "PS5",
-  "category" : "ELECTRONICS"
+  "category" : "ELECTRONICS",
+  "weight" : {
+    "value" : 8.6,
+    "unit" : "LBS"
+  }
 }

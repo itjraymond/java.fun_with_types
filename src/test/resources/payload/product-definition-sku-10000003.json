@@ -3,5 +3,9 @@
   "sku" : "10000003",
   "brand" : "SOnY",
   "name" : "TV",
-  "category" : "TVS"
+  "category" : "TVS",
+  "weight" : {
+    "value" : 20002.0,
+    "unit" : "GRAM"
+  }
 }

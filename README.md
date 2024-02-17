@@ -587,3 +587,28 @@ The serialization and deserialization is taken care by Jackson library and so we
 enums. However, for R2DBC, we need to expand our existing converter for the ProductDefinition. Since this is very
 simple, see the source code to see the changes.
 
+# Checkout the branch `feature/weight`
+
+# 5. Fun with types: Weight
+
+The abstraction of `Weight` for a retail store mean how heavy a product is. This weight information is usually used when
+the product need to be transported, stored or as information for the customer. We can use Float for those weight values
+without worrying to overflow. But the abstraction of weight is not just a decimal number. A unit-of-weight also need to
+be specified and considered. Although the weight of an object does not change (on Earth), the meaning of the decimal
+value for human changes, and depends on the unit of weight used. To make matter worst, we have two system of weight:
+imperial and metric.
+
+The branch `feature/weight` show an implementation which we believe is readable and consistent. The weight is always
+standarized to GRAM in the persistence store. This way we can create consistent query. The original unit-of-weight is
+also stored in order to re-construct the original weight/unit for a product definition.
+
+The serialization/deserialization of Weight has the following schema:
+
+```
+{
+   "value" : decimal,
+   "unit" : oneOf("MILLIGRAM","GRAM","KILOGRAM","LBS","OUNCE")
+}
+```
+
+To see this in action, run the `ProductDefinitionControllerTest.java`.

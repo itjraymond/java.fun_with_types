@@ -3,5 +3,9 @@
   "sku" : "10000000",
   "brand" : "sony",
   "name" : "Product name",
-  "category" : "TVS"
+  "category" : "TVS",
+  "weight" : {
+    "value" : 20.2,
+    "unit" : "KILOGRAM"
+  }
 }
